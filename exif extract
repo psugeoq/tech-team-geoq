@@ -1,0 +1,4 @@
+<?php
+$exif = exif_read_data('test.jpg', NULL, true, true);
+print_r ($exif);
+?>
