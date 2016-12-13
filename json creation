@@ -1,0 +1,83 @@
+<?php
+	// set minimum time for today at midnight and maximum time for tomorrow midnight, if we get nothing in the CGI
+	$min_time = new DateTime("today midnight");
+	$max_time = new DateTime("tomorrow midnight");
+	$startDate = new DateTime();
+	$startDate->setTimeZone($tz);
+	$endDate = new DateTime();
+	$endDate->setTimeZone($tz);
+	
+	$twitter 	= (empty($_GET['twitter'])) 	? " " 	: $_GET['twitter']; //initial search term
+	$startDate 	= (empty($_GET['startDate'])) 	? $min_time 	: date_create_from_format("Y-m-d H:i:s", $_GET['startDate']);
+	$endDate 	= (empty($_GET['endDate'])) 	? $max_time 	: date_create_from_format("Y-m-d H:i:s", $_GET['endDate']);
+
+$dbserver = "updb1.up.ist.psu.edu";
+$dbuser = "cjd5456";
+$dbpass = "GPxmcdDy";
+$dbname = "cjd5456";
+
+$mysqlconn = new mysqli( $dbserver, $dbuser, $dbpass, $dbname);
+if ( $mysqlconn->connect_error ) {
+  die("Connection failed: " . $mysqlconn->connect_error);
+}
+
+
+$query = "SELECT * FROM tweets WHERE tweet_text LIKE '%$twitter%'";
+
+$array = array();
+//echo "<table border=1>";
+$result = $mysqlconn->query($query);
+
+
+if ($result->num_rows > 0) {
+  while ($row = $result->fetch_assoc()) {
+  //  echo "<tr>";
+    $data[] = $row;
+    foreach ( $row as $item ) {
+  //    echo "<td>$item</td>";
+    }
+  //  echo "</tr>";
+  }
+}
+//echo "</table>";
+
+   //display in geojson
+   
+  // issue is with array()
+
+//$data = array(); //setting up an empty PHP array for the data to go into
+
+if($result = mysqli_query($db,$query)) {
+  while ($row = mysqli_fetch_assoc($result))
+  {
+    $data[] = $row;
+  }
+}
+
+$jsonData =json_encode($data);
+$original_data = json_decode($jsonData, true);
+$features = array();
+foreach($original_data as $key => $value) {
+    $features[] = array(
+        'type' => 'Feature',
+		
+		'properties' => array('tweet_text' => $value['tweet_text']),
+        'geometry' => array(
+             'type' => 'Point', 
+             'coordinates' => array(
+                  $value[geo_long], 
+                  $value[geo_lat], 
+                  
+             ),
+         ),
+    );
+}
+$new_data = array(
+    'type' => 'FeatureCollection',
+    'features' => $features,
+);
+
+$final_data = json_encode($new_data, JSON_PRETTY_PRINT);
+print_r($final_data);
+if(file_put_contents('data.json', $final_data));
+?>
